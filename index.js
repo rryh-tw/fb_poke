@@ -70,7 +70,9 @@ async function clickDivInsideAncestorDiv(page, ancestorDivHandle) {
       const divToClick = ancestorDiv.querySelector('div[aria-label="戳回去"]');
       if (divToClick) {
         divToClick.click();
+        console.log("poky");
       } else {
+        console.log("waiting...");
       }
     }, ancestorDivHandle);
   }
@@ -99,28 +101,38 @@ async function main() {
   await login(page);
   await waitForCheckpoint(page);
 
-  // Navigate to pokes page
-  await page.goto('https://www.facebook.com/pokes/');
-  
   const keywords = config.keywords;
+  let pokyInterval;
+  // Navigate to pokes page
 
-  async function poky() {
-    for (const keyword of keywords) {
-      const keywordExistsInPage = await keywordExists(page, keyword);
-      if (keywordExistsInPage) {
-        const ancestorDivHandle = await findAncestorDiv(page, keyword);
-        if (ancestorDivHandle) {
-          await clickDivInsideAncestorDiv(page, ancestorDivHandle);
-        } else {
-          console.log(`Ancestor div not found for keyword '${keyword}'.`);
+//   page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+  async function refreshPokyPage() {
+    clearInterval(pokyInterval); // Clear the interval before setting a new one
+    await page.goto('https://www.facebook.com/pokes/');
+    console.log('Poky page refreshed.');
+    async function poky() {
+        for (const keyword of keywords) {
+            const keywordExistsInPage = await keywordExists(page, keyword);
+            if (keywordExistsInPage) {
+                const ancestorDivHandle = await findAncestorDiv(page, keyword);
+                if (ancestorDivHandle) {
+                    console.log(`Challenging ${keyword}...`);
+                    await clickDivInsideAncestorDiv(page, ancestorDivHandle);
+                } else {
+                    console.log(`Ancestor div not found for keyword '${keyword}'.`);
+                }
+            } else {
+                console.log(`${keyword} is sleeping.`);
+            }
         }
-      } else {
-        // console.log(`Keyword '${keyword}' not found.`);
-      }
     }
+
+    pokyInterval = setInterval(poky, 3000); // Set the interval and assign it to pokyInterval
   }
 
-  setInterval(poky, 3000);
+  refreshPokyPage();
+  setInterval(refreshPokyPage, 60000);
+  
 }
 
 main();
