@@ -79,6 +79,7 @@ async function clickDivInsideAncestorDiv(page, ancestorDivHandle) {
 }
 
 async function keywordExists(page, keyword) {
+    await page.waitForSelector('a'); // Wait for at least one link to appear on the page
   const exists = await page.evaluate((keyword) => {
     const links = Array.from(document.querySelectorAll('a'));
     return links.some(link => link.textContent.trim() === keyword);
@@ -103,9 +104,8 @@ async function main() {
 
   const keywords = config.keywords;
   let pokyInterval;
-  // Navigate to pokes page
 
-//   page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+  let userState = {};
   async function refreshPokyPage() {
     clearInterval(pokyInterval); // Clear the interval before setting a new one
     await page.goto('https://www.facebook.com/pokes/');
@@ -116,13 +116,22 @@ async function main() {
             if (keywordExistsInPage) {
                 const ancestorDivHandle = await findAncestorDiv(page, keyword);
                 if (ancestorDivHandle) {
-                    console.log(`Challenging ${keyword}...`);
+                    if(userState[keyword] != true){
+                        userState[keyword] = true;
+                        console.log(`Challenging ${keyword}...`);
+                    }
                     await clickDivInsideAncestorDiv(page, ancestorDivHandle);
                 } else {
-                    console.log(`Ancestor div not found for keyword '${keyword}'.`);
+                    if(userState[keyword] != false){
+                        console.log(`Ancestor div not found for keyword '${keyword}'.`);
+                        userState[keyword] = false;
+                    }
                 }
             } else {
-                console.log(`${keyword} is sleeping.`);
+                if(userState[keyword] != false){
+                    console.log(`${keyword} is sleeping.`);
+                    userState[keyword] = false;
+                }
             }
         }
     }
