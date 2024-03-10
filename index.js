@@ -89,58 +89,70 @@ async function keywordExists(page, keyword) {
 }
 
 async function main() {
-  const browser = await puppeteer.launch({
-    headless: false,
-    executablePath: config.browser_path,
-    slowMo: 20,
-    args: ['--disable-notifications'],
-  });
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800 });
+    const browser = await puppeteer.launch({
+        headless: true, // false,
+        executablePath: config.browser_path,
+        slowMo: 20,
+        args: ['--disable-notifications'],
+    });
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 800 });
 
-  await loadCookies(page);
-  await login(page);
-  await waitForCheckpoint(page);
+    await loadCookies(page);
+    await login(page);
+    await waitForCheckpoint(page);
 
-  const keywords = config.keywords;
-  let pokyInterval;
+    const keywords = config.keywords;
+    let pokyInterval;
 
-  let userState = {};
-  async function refreshPokyPage() {
-    clearInterval(pokyInterval); // Clear the interval before setting a new one
-    await page.goto('https://www.facebook.com/pokes/');
-    console.log('Poky page refreshed.');
-    async function poky() {
-        for (const keyword of keywords) {
-            const keywordExistsInPage = await keywordExists(page, keyword);
-            if (keywordExistsInPage) {
-                const ancestorDivHandle = await findAncestorDiv(page, keyword);
-                if (ancestorDivHandle) {
-                    if(userState[keyword] != true){
-                        userState[keyword] = true;
-                        console.log(`Challenging ${keyword}...`);
-                    }
-                    await clickDivInsideAncestorDiv(page, ancestorDivHandle);
-                } else {
-                    if(userState[keyword] != false){
-                        console.log(`Ancestor div not found for keyword '${keyword}'.`);
-                        userState[keyword] = false;
-                    }
-                }
-            } else {
-                if(userState[keyword] != false){
-                    console.log(`${keyword} is sleeping.`);
-                    userState[keyword] = false;
+    let userState = {};
+    async function refreshPokyPage() {
+        clearInterval(pokyInterval); // Clear the interval before setting a new one
+
+        try {
+            await page.goto('https://www.facebook.com/pokes/');
+            console.log('Poky page refreshed.');
+            
+            async function poky() {
+                try {
+                    for (const keyword of keywords) {
+                        const keywordExistsInPage = await keywordExists(page, keyword);
+                        if (keywordExistsInPage) {
+                            const ancestorDivHandle = await findAncestorDiv(page, keyword);
+                            if (ancestorDivHandle) {
+                                if(userState[keyword] != true){
+                                    userState[keyword] = true;
+                                    console.log(`Challenging ${keyword}...`);
+                                }
+                                await clickDivInsideAncestorDiv(page, ancestorDivHandle);
+                            } else {
+                                if(userState[keyword] != false){
+                                    console.log(`Ancestor div not found for keyword '${keyword}'.`);
+                                    userState[keyword] = false;
+                                }
+                            }
+                        } else {
+                            if(userState[keyword] != false){
+                                console.log(`${keyword} is sleeping.`);
+                                userState[keyword] = false;
+                            }
+                        }
+                    } 
+                } catch (error) {
+                    console.error('Error occurred in poky:', error);
+                    // Handle the error as needed
                 }
             }
+
+            pokyInterval = setInterval(poky, 3000); // Set the interval and assign it to pokyInterval
+        } catch (error) {
+            console.error('Error occurred in refreshPokyPage:', error);
+            // Handle the error as needed
         }
     }
 
-    pokyInterval = setInterval(poky, 3000); // Set the interval and assign it to pokyInterval
-  }
-
-  refreshPokyPage();
-  setInterval(refreshPokyPage, 60000);
+    refreshPokyPage();
+    setInterval(refreshPokyPage, 60000);
   
 }
 
